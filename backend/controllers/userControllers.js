@@ -87,6 +87,7 @@
 const asyncHandler = require("express-async-handler");
 const User = require('../models/userModel');
 const generateToken = require('../config/generateToken');
+const bcrypt = require('bcryptjs');
 
 const registerUser = asyncHandler(async (req, res) => {
     const { name, email, password, pic } = req.body;
@@ -128,15 +129,17 @@ const authUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
 
-    if (user && (await user.matchPassword(password))) {
-        res.json({
+    //matchpassword in usermodel and generate token in config
+
+    if (user && (await user.matchPassword(String(password)))) {
+        res.status(201).json({
             _id: user._id,
             name: user.name,
             email: user.email,
             pic: user.pic,
             token: generateToken(user._id),
         });
-        console.log("User authenticated");
+      //  console.log("User authenticated");
     } else {
         res.status(401);
         throw new Error("Invalid email or password");
@@ -145,6 +148,9 @@ const authUser = asyncHandler(async (req, res) => {
 
 
 //i want all users except this partcicular user
+//regex is used to match pattern
+   //api/user?search=ujjwal
+//match user by name or by email options i to be case sensitive
 const allUsers = asyncHandler(async (req, res) => {
     const keyword = req.query.search
         ? {
@@ -156,7 +162,10 @@ const allUsers = asyncHandler(async (req, res) => {
         : {};
 
    // console.log(keyword);
-    const users = await User.find({ ...keyword, _id: { $ne: req.user._id } });
+   //this means except this user logged in i want all other uers that is part of search result
+    //const users = await User.find({ ...keyword, _id: { $ne: req.user._id } });
+    //now to access req.user._id we need to accees json web token to get authorize
+    const users = await User.find(keyword).find({ _id: { $ne: req.user._id } });
     res.send(users);
 });
 
